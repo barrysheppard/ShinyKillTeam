@@ -18,52 +18,14 @@ ui <- fluidPage(
     # Sidebar with a slider input for number of bins 
     fluidRow(
         column(3,
+           selectInput("att_unit", "Select Attacking Unit", "")
+        ),       
                
-           selectInput("att_unit", "Select Attacking Unit", ""),
-               
-               
-           selectInput("att", h4("Number of Attacks"), 
-                  choices = list("1" = 1, "2" = 2,
-                                 "3" = 3, "4" = 4,
-                                 "5" = 5), selected = 1),
-            selectInput("bs", h4("BS"), 
-                        choices = list("2+" = 2, "3+" = 3,
-                                       "4+" = 4, "5+" = 5,
-                                       "6+" = 6), selected = 1),
-            selectInput("str", h4("Strength"), 
-                        choices = list("1" = 1, "2" = 2,
-                                       "3" = 3, "4" = 4,
-                                       "5" = 5, "6" = 6, 
-                                       "7" = 7, "8" = 8), selected = 1),
-            selectInput("ap", h4("AP"), 
-                        choices = list("None" = 0, "-1" = 1, "-2" = 2,
-                                       "-3" = 3, "-4" = 4, "-5" = 5
-                                       ), selected = 0)
-        ),
-        column(3,
-            selectInput("t", h4("Toughness"), 
-                        choices = list("1" = 1, "2" = 2,
-                                       "3" = 3, "4" = 4,
-                                       "5" = 5, "6" = 6,
-                                       "7" = 7), selected = 3),
-            selectInput("sv", h4("Armor Save"), 
-                        choices = list("2+" = 2, "3+" = 3,
-                                       "4+" = 4, "5+" = 5,
-                                       "6+" = 6, "None" = 9),
-                                       selected = 9),
-            selectInput("inv", h4("Invul Armor Save"), 
-                        choices = list("2+" = 2, "3+" = 3,
-                                       "4+" = 4, "5+" = 5,
-                                       "6+" = 6, "None" = 9),
-                        selected = 9)
-        ),
         # Output the text
         column(3,
-            textOutput("hit_chance"),
-            textOutput("wound_chance"),
-            textOutput("save_chance"),
-            textOutput("num_wounds"),
-            textOutput("att_unit")
+            textOutput("att_unit"),
+            textOutput("show_bs")
+            
         )
     )
 )
@@ -144,25 +106,32 @@ break_armor_calc <- function(sv, ap, invul=7){
 # Define server logic/
 server <- function(input, output, session) {
 
+  # Load your csv file
+  units_df <- read.csv("data/units.csv", header = TRUE, sep = ",")
+  # declare variables
+
    observe({
-      # Load your csv file
-      x <- read.csv("data/units.csv", header = TRUE, sep = ",")
-          
       # Update selection att_unit (passed to UI)    
       updateSelectInput(session, "att_unit",
                         label = "Select Attacking Unit",
-                        choices = x[, 1],
-                        selected = x[, 1][1]
+                        choices = units_df[, 1],
+                        selected = units_df[, 1][1]
             )
-        })
-    
-    output$att_unit <- renderText({
-        x <- input$att_unit
-        paste("Attacking Unit: ", x)
     })
-    
+
+  
+    output$att_unit <- renderText({
+      unit_name <- input$att_unit
+      paste("Attacking Unit: ", unit_name)
+    })
+  
+    output$show_bs <- renderText({
+      x <- units_df[units_df$name == input$att_unit,]$skill
+      paste("Unit BS: ", x)
+    })
+        
     output$hit_chance <- renderText({
-        x <- 100 * hit_chance_calc(input$bs)
+        x <- 100 * hit_chance_calc(units_df[units_df$name == input$att_unit,]$skill)
         x <- floor(x)
         paste("Chance to hit: ", x,"%")
     })
@@ -197,6 +166,10 @@ server <- function(input, output, session) {
         num_wounds <- num_wounds * break_armor_calc(sv, ap, inv)
         num_wounds <- round(num_wounds, 2)
         paste("Number of Wounds: ", num_wounds)
+    })
+    
+    output$show_table = DT::renderDataTable({
+      df
     })
 }
 
